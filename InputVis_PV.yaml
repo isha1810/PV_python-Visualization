@@ -1,10 +1,28 @@
 #Path to XDMF file
-file_path: #insert path here
+file_path: 
+		#insert path here
 
-#
-#Variable to visualize
-Variable_name: #insert name of variable here
+#Set Variable display
+Variable_properties:
+  Variable_name: 
+  		 #insert name of variable here
+  #Choose one representation from: Surface, Points, Wireframe, Outline, Feature Edges, Surface With Edges, Point Gaussian, 3D Glyphs
+  Representation:
+		#insert one of the above here
+  Color_map:
+		#Viridis (matplotlib) or Inferno (matplotlib)
 
+  Opacity:
+	# Choose Opacity function:
+      # 1 - Constant (value between 0 and 1)
+      # 2 - Proportional to variable (value is variable)
+    Function_type:
+           #index from above menu
+    Value:
+           #insert value if 1
+    Variable:
+           #insert variable if 2
+		
 #Choose Filter
 Filter:
   Clip: 
@@ -12,8 +30,8 @@ Filter:
            #insert Yes in place of ~
     Clip_type: 
            #Choose Clip type from: Plane, Box, Sphere, Cylinder, Scalar
-    Origin: []
-    Normal: []
+    Origin: [1, 0, 0]
+    Normal: [0, 0, 0]
     #above are only for Plane, havent added others yet
 
   Slice:
@@ -21,8 +39,8 @@ Filter:
            #insert Yes in place of ~
     Slice_type: 
            #Choose Slice type from: Plane, Box, Sphere, Cylinder
-    Origin: []
-    Normal: []
+    Origin: [1, 0, 0]
+    Normal: [0, 0, 0]
     #above are only for Plane, havent added others yet 
       
   Contour:
@@ -30,25 +48,7 @@ Filter:
            #insert Yes in place of ~
     Countour_variable: 
            #contour by this variable
-    
-#Visual Elements of Plot
-Visual_elements:
-  #Choose one representation from: Surface, Points, Wireframe, Outline, Feature Edges, Surface With Edges, Point Gaussian, 3D Glyphs
-  Representation: 
-           #insert one of the above here
-  Color_map: 
-           #Viridis (matplotlib) or Inferno (matplotib)
-  Opacity:
-    #Choose Opacity function:
-      # 1 - Constant (value between 0 and 1)
-      # 2 - Proportional to variable (value is variable)
-    Function_type: 
-           #index from above menu
-    Value: 
-           #insert value if 1
-    Variable: 
-           #insert variable if 2 
-  
+ 
 #Camera Movement
 Camera_movement:
   #Choose type of camera view:
