@@ -1,7 +1,9 @@
 #### import the simple module from the paraview                                                                                             
 from paraview.simple import *
 import sys
-
+import yaml
+import numpy as np
+import math
 #### disable automatic camera reset on 'Show'                                                      
 paraview.simple._DisableFirstRenderCameraReset()
 
@@ -31,7 +33,7 @@ Input_data = yaml.load(Input_stream)
 var = Input_data['Variable_properties']['Variable_name']
 color_map = Input_data['Variable_properties']['Color_map']
 opacity_val = Input_data['Variable_properties']['Opacity']['Value']
-N_points = 50 #used for setting varying opacities at different data points
+N_points = 10 #used for setting varying opacities at different data points
 # From Filter
 contour_var = Input_data['Filter']['Contour']['Contour_variable'] 
 
@@ -59,50 +61,66 @@ except FileNotFoundError:
 
 xDMFReader1 = GetActiveSource()
 renderView1 = GetActiveViewOrCreate('RenderView')
+xDMFReader1_Display = Show(xDMFReader1, renderView1)
 
 #****************************************************************
 # Set Variable Display
 #****************************************************************
 #--------------------- Set Representation------------------------
 xDMFReader1_Display.SetRepresentationType(Input_data['Variable_properties']['Representation'])
-
+ColorBy(xDMFReader1_Display, ('POINTS', var))
 #---------------------Set color map for var----------------------
 psiLUT = GetColorTransferFunction(var)
 psiLUT.ApplyPreset(color_map, True)
 
 #-------------------------Set Opacity----------------------------
 #Get range of var array
-var_pointData = xDMFReader1.PointData.GetArray(var)
 var_range = xDMFReader1.PointData.GetArray(var).GetRange()
- 
+max = var_range[0]
+min = var_range[1]
+
 if Input_data['Variable_properties']['Opacity']['Function_type'] == 1: #Constant Opacity
     psiLUT.EnableOpacityMapping = 1
-    psiPWF.GetOpacityTransferFunction(var)
+    psiPWF = GetOpacityTransferFunction(var)
     psiPWF.Points = [var_range[0], opacity_val, 0.5, 0, var_range[1] , opacity_val, 0.5, 0]
 
 elif Input_data['Variable_properties']['Opacity']['Function_type'] == 2: #Varying opacity
     psiLUT.EnableOpacityMapping = 1
-    psiPWF.GetOpacityTransferFunction(var)
-    var_pointData_norm =var_pointData / var_range[1] #to use as opacity value
-    #Initialize variables for loop
-    num = int(len(var_pointData_norm)/N_points) + 1
-    psiPWF.Points = []
-    count = 0
-    #Creating list of opacitites for psiPWF.Points list using N_points
-    for points in N_points-1:
-        psiPWF.Points.append(var_pointData[count])
-        psiPWF.Points.append(var_pointData_norm[count])
-        psiPWF.Points.append(0.5)
-        psiPWF.Points.append(0.0)
-        count = count + num
-    #maybe add last point as well to make sure
-#Should be a better way to do this^^^^^^
+    psiPWF = GetOpacityTransferFunction(var)
+    
+    x_range = np.linspace(min, max, N_points*10)
+    x_0_list = x_range[min:max:10]
+
+    sigma = x_range[1] - x_range[0] #width  
+    opacity_list = []
+    opacity = []
+    for i in range(len(x_range)):
+        if x_range[i] in x_0_list:
+            x_vals = np.linspace(x_range[i]-(2*sigma), x_range[i]+(2*sigma), 5)
+            for x in x_vals:
+                gauss = math.exp(-1*math.pow(x-x_range[i], 2)/(2*math.pow(sigma,2)))
+                opacity.append(abs(x_range[i]*gauss / max))
+                opacity_list.append(x)
+                opacity_list.append(opacity[-1])
+                opacity_list.append(0.5)
+                opacity_list.append(0)
+        elif x_range[i] not in x_0_list and len(opacity)==i-1:
+            opacity_list.append(x_range[i])
+            opacity_list.append(0)
+            opacity_list.append(0.5)
+            opacity_list.append(0)
+    opacity_list.append(x_range[i])
+    opacity_list.append(0)
+    opacity_list.append(0.5)
+    opacity_list.append(0)
+    
+    psiPWF.Points = opacity_list
 
 #****************************************************************                                     
 # Apply Filter
 #****************************************************************
 if Input_data['Filter']['Clip']['Apply'] is True: #For Clip
-clip1 = Clip(Input=xDMFReader1)
+    clip1 = Clip(Input=xDMFReader1)
     if Input_data['Filter']['Clip']['Clip_type'] is 'Plane':
         clip1.ClipType = 'Plane'
         clip1.Scalars = ['POINTS', var]
@@ -131,3 +149,10 @@ elif Input_data['Filter']['Contour']['Apply'] is True: #For Contour
 # Camera Movement
 #****************************************************************
 
+#**************************************************************** 
+# Save Image
+#**************************************************************** 
+xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
+renderView1.Update()
+renderView1.ResetCamera()
+SaveScreenshot('image.png',renderView1)
