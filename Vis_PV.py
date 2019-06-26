@@ -45,7 +45,7 @@ if Input_data['Variable_properties']['Representation'] is None:
 if Input_data['Variable_properties']['Color_map'] is None:
     print("Using default color map")
     color_map = 'Viridis (matplotlib)'
-if Input_data['Filter']['Contour']['Contour_variable']:
+if Input_data['Filter']['Contour']['Contour_variable'] == var:
     sys.exit("Cannot color by and contour by same variable")
 #Opacity
 #Function_type
@@ -58,9 +58,10 @@ try:
     xDMFReader1 = XDMFReader(FileNames=[Input_data['file_path']])
 except FileNotFoundError:
     sys.exit("No such file at file location specified")
-
+#xDMFReader1.PointArrayStatus = ['Error(Psi)', 'Psi']
 xDMFReader1 = GetActiveSource()
 renderView1 = GetActiveViewOrCreate('RenderView')
+xDMFReader1_Display = GetDisplayProperties(xDMFReader1, view=renderView1)
 xDMFReader1_Display = Show(xDMFReader1, renderView1)
 
 #****************************************************************
@@ -69,10 +70,18 @@ xDMFReader1_Display = Show(xDMFReader1, renderView1)
 #--------------------- Set Representation------------------------
 xDMFReader1_Display.SetRepresentationType(Input_data['Variable_properties']['Representation'])
 ColorBy(xDMFReader1_Display, ('POINTS', var))
+#---------------------Tetrahedralize-----------------------------
+#tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
+#xDMFReader1_tetra = Show(tetrahedralize1, renderView1)
+#Hide(scalarWave3DPeriodicVol_dataxmf, renderView1)
+xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
+
 #---------------------Set color map for var----------------------
 psiLUT = GetColorTransferFunction(var)
 psiLUT.ApplyPreset(color_map, True)
-
+xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
+xDMFReader1_Display.SetScaleArray = ['POINTS', 'Error(Psi)']
+xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
 #-------------------------Set Opacity----------------------------
 #Get range of var array
 var_range = xDMFReader1.PointData.GetArray(var).GetRange()
@@ -119,40 +128,94 @@ elif Input_data['Variable_properties']['Opacity']['Function_type'] == 2: #Varyin
 #****************************************************************                                     
 # Apply Filter
 #****************************************************************
-if Input_data['Filter']['Clip']['Apply'] is True: #For Clip
+print("Clip Apply:")
+print(Input_data['Filter']['Clip']['Apply'])
+print(type(Input_data['Filter']['Clip']['Apply']))
+
+if Input_data['Filter']['Clip']['Apply'] == True: #For Clip
     clip1 = Clip(Input=xDMFReader1)
-    if Input_data['Filter']['Clip']['Clip_type'] is 'Plane':
+    if Input_data['Filter']['Clip']['Clip_type'] == 'Plane':
         clip1.ClipType = 'Plane'
         clip1.Scalars = ['POINTS', var]
         clip1.ClipType.Origin = Input_data['Filter']['Clip']['Origin']
         clip1.ClipType.Normal = Input_data['Filter']['Clip']['Normal']
+        #------Hide previous data display before filter-----------
+        Hide(xDMFReader1, renderView1)
         xDMFReader1_Display = Show(clip1,renderView1)
     #Do for all clip types 
-elif Input_data['Filter']['Slice']['Apply'] is True: #For Slice
+
+elif Input_data['Filter']['Slice']['Apply'] == True: #For Slice
+    print("In slice")
     slice1 = Slice(Input=xDMFReader1)
-    if Input_data['Filter']['Slice']['Slice_type'] is 'Plane':
+    if Input_data['Filter']['Slice']['Slice_type'] == 'Plane':
+        print("In slice plane")
         slice1.SliceType = 'Plane'
         slice1.SliceOffsetValues = [0.0]
         slice1.SliceType.Origin =Input_data['Filter']['Slice']['Origin']
-        clip1.ClipType.Normal= Input_data['Filter']['Slice']['Normal']
+        slice1.SliceType.Normal= Input_data['Filter']['Slice']['Normal']
+        #------Hide previous data display before filter-----------                                                   
+        Hide(xDMFReader1, renderView1)
         xDMFReader1_Display = Show(slice1,renderView1)
     #Do for all slice types                                
-elif Input_data['Filter']['Contour']['Apply'] is True: #For Contour
+
+elif Input_data['Filter']['Contour']['Apply'] == True: #For Contour
     #make sure contour var and color var are different
+    print('In contour')
     contour1 = Contour(Input=xDMFReader1)
+    #print('created new contour object')
     contour1.ContourBy = ['POINTS', contour_var]
+    #print(type(contour_var))
+    #print('set contour by var')
     contour1.Isosurfaces = [0.0]
+    #print('isosurfaces')
     contour1.PointMergeMethod = 'Uniform Binning'
+    #print('point merge')
+    #------Hide previous data display before filter-----------                                                    
+    Hide(xDMFReader1,renderView1)
     xDMFReader1_Display = Show(contour1,renderView1)
+    #print('show')
+    xDMFReader1_Display.Representation = 'Surface'
+    xDMFReader1_Display.ColorArrayName = ['POINTS', 'Psi']
+    xDMFReader1_Display.LookupTable = psiLUT
+    xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
 
 #****************************************************************
 # Camera Movement
 #****************************************************************
 
+
+
+
+
+#****************************************************************
+# Warp
+#****************************************************************
+if Input_data['Warp']['Add_warp'] == True:
+    #tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
+    #xDMFReader1_tetra = Show(tetrahedralize1, renderView1)
+    Hide(xDMFReader1, renderView1)
+#    Hide(xDMFReader1_Display, renderView1)
+#    ColorBy(xDMFReader1, ('POINTS', var))
+    slice1 = Slice(Input=xDMFReader1)
+    slice1.SliceType = 'Plane'
+    slice1.SliceOffsetValues = [0.0]
+    slice1.SliceType.Origin = [3.141592653589793, 3.141592653589793, 3.141592653589793]
+    slice1.SliceType.Normal = [0.0, 0.0, 1.0]
+    #xDMFReader1_Display = Show(slice1, renderView1)
+    xDMFReader1_Display.ColorArrayName = ['POINTS', var]
+    #warp:
+    warpByScalar1 = WarpByScalar(Input=slice1)
+    warpByScalar1.Scalars = ['POINTS', var]
+    xDMFReader1_Display = Show(warpByScalar1, renderView1)
+
+
+#------------------Display Options------------------------------
+renderView1.Update()
+renderView1.ResetCamera()
+ColorBy(xDMFReader1_Display, ('POINTS', var))
+xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
+
 #**************************************************************** 
 # Save Image
 #**************************************************************** 
-xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
-renderView1.Update()
-renderView1.ResetCamera()
 SaveScreenshot('image.png',renderView1)
