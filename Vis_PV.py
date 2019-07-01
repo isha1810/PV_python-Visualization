@@ -38,8 +38,8 @@ N_points = 10 #used for setting varying opacities at different data points
 contour_var = Input_data['Filter']['Contour']['Contour_variable'] 
 
 #---------------------Input Error Handling-----------------------
-#Need to ensure that the variables being checked for are not null - return error message
-#Representation
+# Need to ensure that the variables being checked for are not null - return error message
+# Representation
 if Input_data['Variable_properties']['Representation'] is None:
     sys.exit("No representation was specified")
 if Input_data['Variable_properties']['Color_map'] is None:
@@ -47,13 +47,13 @@ if Input_data['Variable_properties']['Color_map'] is None:
     color_map = 'Viridis (matplotlib)'
 if Input_data['Filter']['Contour']['Contour_variable'] == var:
     sys.exit("Cannot color by and contour by same variable")
-#Opacity
-#Function_type
-#Value
-#Filter - check from Apply = true, string should be given 
+# Opacity
+# Function_type
+# Value
+# Filter - check from Apply = true, string should be given 
 
 #--------------------------Read XDMF-----------------------------
-#Handle file not found error
+# Handle file not found error
 try:
     xDMFReader1 = XDMFReader(FileNames=[Input_data['file_path']])
 except FileNotFoundError:
