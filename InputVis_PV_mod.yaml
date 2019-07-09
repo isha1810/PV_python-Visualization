@@ -1,0 +1,67 @@
+#Path to XDMF file
+file_path: ScalarWave3DPeriodicVol_data.xmf  
+#insert path here
+
+#Set Variable display
+Variable_properties:
+  Variable_name: Psi
+#          insert name of variable here
+#          Choose one representation from: Surface, Points, Wireframe, Outline, Feature Edges, Surface With Edges, Point Gaussian, 3D Glyphs
+  Representation: Surface
+#          insert one of the above here
+  Color_map: Viridis (matplotlib)
+#          Viridis (matplotlib) or Inferno (matplotlib)
+  Opacity: 
+#          Choose Opacity function:
+#           1 - Constant (value between 0 and 1)
+#           2 - Proportional to variable (value is variable)
+    Function_type: 
+#          index from above menu
+    Value: 
+#          insert value if 1
+
+#Choose Filter
+Filter:
+  Clip: 
+    Apply: False
+#          enter True/False
+    Clip_type: Plane 
+#          Choose Clip type from: Plane, Box, Sphere, Cylinder, Scalar
+    Origin: [3.14, 3.14, 3.14]
+    Normal: [1, 0, 0]
+#above are only for Plane, havent added others yet
+
+  Slice:
+    Apply: False
+#          enter True/False
+    Slice_type: Plane
+#          Choose Slice type from: Plane, Box, Sphere, Cylinder
+    Origin: [3.14, 3.14, 3.14]
+    Normal: [1, 0, 0]
+#above are only for Plane, havent added others yet 
+
+  Contour:
+    Apply: False
+#          enter True/False
+    Contour_variable: Error(Psi)
+#          contour by this variable
+ 
+#Camera Movement
+Camera_movement:
+#Choose type of camera view:
+#  1 - Orbit
+#  2 - Follow Path
+  Type: 
+#insert index from above options
+  Path_points: 
+#if 2
+    - [0,0,0]
+    - [0,0,0]
+    - [0,0,0]
+    - [0,0,0]
+
+#Warping 
+Warp:
+  Add_warp: False
+
+ 
