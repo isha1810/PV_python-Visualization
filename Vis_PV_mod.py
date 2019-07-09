@@ -13,7 +13,6 @@ def set_defaultCamera(renderView1):
     '''
     Add
     '''
-   # renderView1 = CreateView('RenderView')
     renderView1.ViewSize = [904, 501]
     renderView1.AxesGrid = 'GridAxes3DActor'
     renderView1.CenterOfRotation = [0.0, 0.0, -22.98529815673828]
@@ -67,13 +66,16 @@ def set_colorMap(var, renderView1, xDMFReader1_Display, color_map):
     xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
     return xDMFReader1_Display, renderView1, Var_LUT 
 
-    #Tetrahedralize
-    #---------------------Tetrahedralize-----------------------------
-    #tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
-    #xDMFReader1_tetra = Show(tetrahedralize1, renderView1)
-    #Hide(scalarWave3DPeriodicVol_dataxmf, renderView1)
-    #xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
-    
+def tetrahedralize(xDMFReader1, renderView1):
+    '''
+    Add
+    '''
+    tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
+    Hide(xDMFReader1, renderView1)
+    xDMFReader1 = Show(tetrahedralize1, renderView1)
+    renderView1.Update()
+    return xDMFReader1, renderView1
+
 def set_Opacity(var, fn_type, opacity_val, renderView1, xDMFReader1, Var_LUT):
     '''
     Add
@@ -117,13 +119,12 @@ def set_Opacity(var, fn_type, opacity_val, renderView1, xDMFReader1, Var_LUT):
         opacity_list.append(x_range[i])
         opacity_list.append(0)
         opacity_list.append(0.5)
-        opacity_list.append(0)
-    
+        opacity_list.append(0)    
         Var_PWF.Points = opacity_list
     renderView1.Update()
     return renderView1
 
-def apply_clip(clip_type, origin, normal, renderView1, xDMFReader1, xDMFReader1_Display):
+def apply_clip(clip_type, origin, normal, var, renderView1, xDMFReader1, xDMFReader1_Display):
     clip1 = Clip(Input=xDMFReader1)
     if clip_type == 'Plane':
         clip1.ClipType = 'Plane'
@@ -136,7 +137,7 @@ def apply_clip(clip_type, origin, normal, renderView1, xDMFReader1, xDMFReader1_
     #Do for all clip types 
     return renderView1, xDMFReader1_Display
 
-def apply_slice(slice_type, origin, normal, renderView1, xDMFReader1, xDMFReader1_Display):
+def apply_slice(slice_type, origin, normal, var, renderView1, xDMFReader1, xDMFReader1_Display):
     slice1 = Slice(Input=xDMFReader1)
     if slice_type == 'Plane':
         slice1.SliceType = 'Plane'
@@ -149,9 +150,16 @@ def apply_slice(slice_type, origin, normal, renderView1, xDMFReader1, xDMFReader
     #Do for all slice types                                
     return renderView1, xDMFReader1_Display
 
+#*********************************************************
+# Does not work yet:
+
 def apply_contour(contour_var, renderView1, xDMFReader1, xDMFReader1_Display):
     #make sure contour var and color var are different
     print('In contour')
+    Var_LUT = GetColorTransferFunction('Psi')
+    xDMFReader1_Display.SetScaleArray = ['POINTS', contour_var]
+    xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
+
     contour1 = Contour(Input=xDMFReader1)
     #print('created new contour object')
     contour1.ContourBy = ['POINTS', contour_var]
@@ -165,22 +173,25 @@ def apply_contour(contour_var, renderView1, xDMFReader1, xDMFReader1_Display):
     Hide(xDMFReader1,renderView1)
     xDMFReader1_Display = Show(contour1,renderView1)
     #print('show')
-    xDMFReader1_Display.Representation = 'Surface'
-    xDMFReader1_Display.ColorArrayName = ['POINTS', 'Psi']
-    xDMFReader1_Display.LookupTable = psiLUT
-    xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
+    #xDMFReader1_Display.Representation = 'Surface'
+    #xDMFReader1_Display.ColorArrayName = ['POINTS', 'Psi']
+    #xDMFReader1_Display.LookupTable = psiLUT
+    #xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
     return renderView1, xDMFReader1_Display
 
 #****************************************************************
-# Camera Movement
+# Camera Movement - not done yet-
 #****************************************************************
-
-
-
+def Animate_camera(renderView1, xDMFReader1):
+    cameraAnimationCue1 = GetCameraTrack(view=renderView1)
+    if animate_type == 1: #orbit data
+        keyFrame1.KeyTime
+    elif animate_type == 2: #follow path
+        
 
 
 #****************************************************************
-# Warp
+# Warp - not done yet-
 #****************************************************************
 def apply_warp():
 #if Input_data['Warp']['Add_warp'] == True:
@@ -202,76 +213,69 @@ def apply_warp():
     xDMFReader1_Display = Show(warpByScalar1, renderView1)
 
 
-#------------------Display Options------------------------------
-#renderView1.Update()
-#renderView1.ResetCamera()
-#ColorBy(xDMFReader1_Display, ('POINTS', var))
-#xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
-
-#**************************************************************** 
-# Save Image
-#**************************************************************** 
-#SaveScreenshot('image.png',renderView1)
+def save_images(renderView1, xDMFReader1):
+    '''
+    Add
+    '''
+    time_steps = xDMFReader1.TimestepValues
+    try:
+        n_steps = len(time_steps)
+    except:
+        n_steps = 1
+        time_steps = [time_steps]
+    if n_steps ==1:
+        SaveScreenshot('image.png', renderView1)
+    elif n_steps > 1:
+        anim = GetAnimationScene()
+        anim.PlayMode = 'Snap To TimeSteps'
+        for n in range(n_steps):
+            print('loop',n)
+            anim.AnimationTime = time_steps[n]
+            view = GetRenderView()
+            SaveScreenshot('image_%s.png' %n, view)
+    return None
 
 def main():
     '''
     Add docstring
     '''
-    print('Data Input')
-    # Get data from file first
+    # Get data from file, set defaukt camera properties
     Input_data = load_InputData()
     renderView1, xDMFReader1, xDMFReader1_Display = readData_Xdmf(Input_data['file_path'])
     set_defaultCamera(renderView1)
+    # variable name to 'var'
+    var = Input_data['Variable_properties']['Variable_name']
+
     # Apply filters 
     if Input_data['Filter']['Clip']['Apply'] == True:
         renderView1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip']['Clip_type'], 
-                                                      Input_data['Filter']['Clip']['Origin'],
-                                                      Input_data['Filter']['Clip']['Normal'], renderView1, xDMFReader1, xDMFReader1_Display)
+                                                      Input_data['Filter']['Clip']['Origin'], Input_data['Filter']['Clip']['Normal'], 
+                                                      var, renderView1, xDMFReader1, xDMFReader1_Display)
     elif Input_data['Filter']['Slice']['Apply'] == True:
-        renderView1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice']['Slice_type'], Input_data['Filter']['Slice']['Origin'],
-                                                       Input_data['Filter']['Slice']['Normal'], renderView1, xDMFReader1, xDMFReader1_Display)
+        renderView1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice']['Slice_type'],
+                                                       Input_data['Filter']['Slice']['Origin'], Input_data['Filter']['Slice']['Normal'], 
+                                                       var, renderView1, xDMFReader1, xDMFReader1_Display)
+    # Not working 
     elif Input_data['Filter']['Contour']['Apply'] == True:
         renderView1, xDMFReader1_Display = apply_contour(Input_data['Filter']['Contour']['Contour_variable'], renderView1, 
                                                          xDMFReader1, xDMFReader1_Display)
-
     renderView1.Update()
-    print('Display Update')
+
     # Update Display
     renderView1, xDMFReader1_Display = set_Representation(Input_data['Variable_properties']['Representation'], renderView1, 
                                                           xDMFReader1_Display)
-    xDMFReader1_Display, renderView1, Var_LUT = set_colorMap(Input_data['Variable_properties']['Variable_name'], renderView1, 
-                                                             xDMFReader1_Display, Input_data['Variable_properties']['Color_map'])
-    renderView1 = set_Opacity(Input_data['Variable_properties']['Variable_name'], 
-                              Input_data['Variable_properties']['Opacity']['Function_type'], 
+    xDMFReader1_Display, renderView1, Var_LUT = set_colorMap(var, renderView1, xDMFReader1_Display, 
+                                                             Input_data['Variable_properties']['Color_map'])
+    renderView1 = set_Opacity(var, Input_data['Variable_properties']['Opacity']['Function_type'], 
                               Input_data['Variable_properties']['Opacity']['Value'], renderView1, xDMFReader1, Var_LUT)
     renderView1.Update()
     renderView1.ResetCamera()
-    print('Screenshot')
-    SaveScreenshot('image.png',renderView1) 
+
+    # Save images
+    save_images(renderView1, xDMFReader1)
+
     return None
-    #---------------------Input Error Handling-----------------------                                              
-    # Need to ensure that the variables being checked for are not null - return error message                      
-    # Representation                                                                                               
-    #if Input_data['Variable_properties']['Representation'] is None:
-     #   sys.exit("No representation was specified")
-    #if Input_data['Variable_properties']['Color_map'] is None:
-     #   print("Using default color map")
-     #   color_map = 'Viridis (matplotlib)'
-    #if Input_data['Filter']['Contour']['Contour_variable'] == var:
-     #   sys.exit("Cannot color by and contour by same variable")
-    # Opacity                                                                                                      
-    # Function_type                                                                                                
-    # Value                                                                                                        
-    # Filter - check from Apply = true, string should be given                                                     
 
-    
-
-    #renderView1.Update()
-    #renderView1.ResetCamera()
-    #ColorBy(xDMFReader1_Display, ('POINTS', var))
-    #xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
-    #xDMFReader1, xDMFReader1_Display = ReadData_Xdmf(Input_data['file_path'])
-    #setVariableDisplay(Input_data['Variable_properties'], xDMFReader1_Display)
 
 if __name__ == "__main__":
     try:
