@@ -135,8 +135,8 @@ def set_Opacity(var, fn_type, opacity_val, renderView1, xDMFReader1, Var_LUT):
     renderView1.Update()
     return renderView1
 
-def apply_clip(clip_Properties, var, renderView1, xDMFReader1, xDMFReader1_Display):
-    clip1 = Clip(Input=xDMFReader1)
+def apply_clip(clip_Properties, var, renderView1, Filter1):
+    clip1 = Clip(Input=Filter1)
     if clip_Properties['Clip_type'] == 'Plane':
         clip1.ClipType = 'Plane'
         clip1.Scalars = ['POINTS', var]
@@ -160,12 +160,12 @@ def apply_clip(clip_Properties, var, renderView1, xDMFReader1, xDMFReader1_Displ
         clip1.ClipType.Radius = clip_Properties['Radius_c']
         clip1.ClipType.Axis = clip_Properties['Axis']
     #--Hide previous data display before filter--
-    Hide(xDMFReader1, renderView1)
+    Hide(Filter1, renderView1)
     xDMFReader1_Display = Show(clip1,renderView1)
-    return renderView1, xDMFReader1_Display
+    return renderView1, clip1, xDMFReader1_Display
 
-def apply_slice(slice_Properties, var, renderView1, xDMFReader1, xDMFReader1_Display):
-    slice1 = Slice(Input=xDMFReader1)
+def apply_slice(slice_Properties, var, renderView1, Filter1):
+    slice1 = Slice(Input=Filter1)
     if slice_Properties['Slice_type'] == 'Plane':
         slice1.SliceType = 'Plane'
         slice1.SliceOffsetValues = [0.0]
@@ -189,13 +189,10 @@ def apply_slice(slice_Properties, var, renderView1, xDMFReader1, xDMFReader1_Dis
         slice1.SliceType.Radius = slice_Properties['Radius_c']
         slice1.SliceType.Axis = slice_Properties['Axis']
     #--Hide previous data display before filter--
-    Hide(xDMFReader1, renderView1)
+    Hide(Filter1, renderView1)
     xDMFReader1_Display = Show(slice1,renderView1)
-    return renderView1, xDMFReader1_Display
+    return renderView1, slice1, xDMFReader1_Display
 
-#****************************************************************
-# Warp - not done yet-
-#****************************************************************
 def apply_warp(var, xDMFReader1, renderView1):
     '''
     Add
@@ -210,7 +207,7 @@ def apply_warp(var, xDMFReader1, renderView1):
     warpByScalar1.Scalars = ['POINTS', var]
     Hide(xDMFReader1, renderView1)
     xDMFReader1_Display = Show(warpByScalar1, renderView1)
-    return renderView1 
+    return renderView1
 
 def save_images(renderView1, xDMFReader1):
     '''
@@ -218,6 +215,7 @@ def save_images(renderView1, xDMFReader1):
     time steps in data. One image per time step saved
     '''
     time_steps = xDMFReader1.TimestepValues
+    renderView1.ViewSize = [1330, 670]
     try:
         n_steps = len(time_steps)
     except:
@@ -245,21 +243,18 @@ def main():
     set_defaultCamera(renderView1)
     # variable name to 'var'
     var = Input_data['Variable_properties']['Variable_name']
-
     # Apply filters
+    Filter1 = GetActiveSource()
     try:
         if Input_data['Filter']['Clip']['Apply'] == True:
-            renderView1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip'], 
-                                                          var, renderView1, xDMFReader1, xDMFReader1_Display)
-        if Input_data['Filter']['Slice']['Apply'] == True:
-            renderView1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice'], 
-                                                           var, renderView1, xDMFReader1, xDMFReader1_Display)
+            renderView1, Filter1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip'], 
+                                                          var, renderView1, Filter1)
+        elif Input_data['Filter']['Slice']['Apply'] == True:
+            renderView1, Filter1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice'], 
+                                                           var, renderView1, Filter1)
     except Input_data['Filter']['Clip']['Clip_type'] == Input_data['Filter']['Slice']['Slice_type']:
         sys.exit('Clip type and Slice type chosen cannot be applied simulatneously')
-    # Not working 
-    #elif Input_data['Filter']['Contour']['Apply'] == True:
-    #    renderView1, xDMFReader1_Display = apply_contour(Input_data['Filter']['Contour']['Contour_variable'], renderView1, 
-    #                                                     xDMFReader1, xDMFReader1_Display)
+
     renderView1.Update()
 
     # Update Display
@@ -269,12 +264,13 @@ def main():
                                                              Input_data['Variable_properties']['Color_map'])
     renderView1 = set_Opacity(var, Input_data['Variable_properties']['Opacity']['Function_type'], 
                               Input_data['Variable_properties']['Opacity']['Value'], renderView1, xDMFReader1, Var_LUT)
-    #xDMFReader1, renderView1 = tetrahedralize(xDMFReader1, renderView1)
+
+
     if Input_data['Warp']['Add_warp'] == True:
         renderView1 = apply_warp(var, xDMFReader1, renderView1)
     renderView1.Update()
     renderView1.ResetCamera()
-
+    
     # Save images
     save_images(renderView1, xDMFReader1)
 
