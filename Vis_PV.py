@@ -78,9 +78,9 @@ def tetrahedralize(xDMFReader1, renderView1):
     '''
     tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
     Hide(xDMFReader1, renderView1)
-    xDMFReader1 = Show(tetrahedralize1, renderView1)
+    xDMFReader1_Display = Show(tetrahedralize1, renderView1)
     renderView1.Update()
-    return xDMFReader1, renderView1
+    return renderView1, xDMFReader1_Display
 
 def set_Opacity(var, fn_type, opacity_val, renderView1, xDMFReader1, Var_LUT):
     '''
@@ -243,28 +243,30 @@ def main():
     set_defaultCamera(renderView1)
     # variable name to 'var'
     var = Input_data['Variable_properties']['Variable_name']
+
+    #renderView1 = tetrahedralize(xDMFReader1, renderView1)
     # Apply filters
     Filter1 = GetActiveSource()
-    try:
-        if Input_data['Filter']['Clip']['Apply'] == True:
-            renderView1, Filter1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip'], 
-                                                          var, renderView1, Filter1)
-        elif Input_data['Filter']['Slice']['Apply'] == True:
-            renderView1, Filter1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice'], 
-                                                           var, renderView1, Filter1)
-    except Input_data['Filter']['Clip']['Clip_type'] == Input_data['Filter']['Slice']['Slice_type']:
-        sys.exit('Clip type and Slice type chosen cannot be applied simulatneously')
 
+    if Input_data['Filter']['Clip']['Clip_type'] == Input_data['Filter']['Slice']['Slice_type']:
+        sys.exit('Clip type and Slice type chosen cannot be applied simulatneously')
+    else:
+        if Input_data['Filter']['Clip']['Apply'] == True:
+            renderView1, Filter1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip'],
+                                                                   var, renderView1, Filter1)
+        elif Input_data['Filter']['Slice']['Apply'] == True:
+            renderView1, Filter1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice'],
+                                                                    var, renderView1, Filter1)
     renderView1.Update()
 
     # Update Display
+    #renderView1, xDMFReader1_Display = tetrahedralize(xDMFReader1, renderView1)
     renderView1, xDMFReader1_Display = set_Representation(Input_data['Variable_properties']['Representation'], renderView1, 
                                                           xDMFReader1_Display)
     xDMFReader1_Display, renderView1, Var_LUT = set_colorMap(var, renderView1, xDMFReader1_Display, 
                                                              Input_data['Variable_properties']['Color_map'])
     renderView1 = set_Opacity(var, Input_data['Variable_properties']['Opacity']['Function_type'], 
                               Input_data['Variable_properties']['Opacity']['Value'], renderView1, xDMFReader1, Var_LUT)
-
 
     if Input_data['Warp']['Add_warp'] == True:
         renderView1 = apply_warp(var, xDMFReader1, renderView1)
