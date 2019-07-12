@@ -1,286 +1,319 @@
+#!/usr/bin/env python
+
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
 from paraview.simple import *
 import sys
 import yaml
 import numpy as np
 import math
-#### disable automatic camera reset on 'Show'                                                      
-paraview.simple._DisableFirstRenderCameraReset()
+import argparse
+        
 
-# Set up the point of view (location, angle, etc.)
+def parse_cmd_line():
+    '''
+    parse command-line arguments
+    :return: dictionary of the command-line args, dashes are underscores
+    '''
+    parser = argparse.ArgumentParser(description='Visualization using Paraview',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--input-file', type=str, required=True,
+                        help='provide path to yaml file containing visualization parameters')
+    parser.add_argument('--save', type=str, required=True,
+                        help='set to the name of output file you want written.\
+                        For animations this saves an mp4 file and for stills, a png')
+    return vars(parser.parse_args())
 
-def set_defaultCamera(renderView1):
+
+def set_default_camera(render_view):
     '''
     Set view and camera properties to a default 
     specified below
     '''
-    renderView1.ViewSize = [904, 501]
-    renderView1.AxesGrid = 'GridAxes3DActor'
-    renderView1.CenterOfRotation = [0.0, 0.0, -22.98529815673828]
-    renderView1.StereoType = 0
-    renderView1.CameraPosition = [-95.16305892510273, 754.3761479590994, 426.10491067642846]
-    renderView1.CameraFocalPoint = [43.11431452669897, 23.554652286151217, -46.78071794111179]
-    renderView1.CameraViewUp = [0.09790398117889891, -0.5275190119519493, 0.843882990999677]
-    renderView1.CameraParallelScale = 715.9367631158923
-    renderView1.Background = [0.0, 0.0, 0.0]
-    return renderView1
+    render_view.AxesGrid = 'GridAxes3DActor'
+    render_view.CenterOfRotation = [0.0, 0.0, -22.98529815673828]
+    render_view.StereoType = 0
+    render_view.CameraPosition = [-95.16305892510273, 754.3761479590994, 426.10491067642846]
+    render_view.CameraFocalPoint = [43.11431452669897, 23.554652286151217, -46.78071794111179]
+    render_view.CameraViewUp = [0.09790398117889891, -0.5275190119519493, 0.843882990999677]
+    render_view.CameraParallelScale = 715.9367631158923
+    render_view.Background = [0.0, 0.0, 0.0]
+    return render_view
 
-def load_InputData():
-    '''
-    Read data from yaml input file
-    '''
-    Input_stream = open("InputVis_PV.yaml", 'r')
-    Input_data = yaml.load(Input_stream)
-    return Input_data
 
-def readData_Xdmf(xdmf_FilePath): 
+def load_input_file(input_file_name):
     '''
-    Read data from XDMF file specified in 
-    yaml file.
+    Read data from yaml input file 
+    Name/path of yaml file is specified in command line arguments
+    '''
+    Input_stream = open(input_file_name, 'r')
+    Input_file = yaml.load(Input_stream)
+    return Input_file
+
+
+def read_xdmf(xdmf_file_path): 
+    '''
+    Read data from XDMF file specified in yaml file.
     '''
     try:
-        xDMFReader1 = XDMFReader(FileNames=xdmf_FilePath)
+        xdmf_reader = XDMFReader(FileNames=xdmf_file_path)
     except FileNotFoundError:
-        sys.exit("No such file at file location specified")
-    xDMFReader1 = GetActiveSource()
-    renderView1 = GetActiveViewOrCreate('RenderView')
-    xDMFReader1_Display = GetDisplayProperties(xDMFReader1, view=renderView1)
-    return renderView1, xDMFReader1, xDMFReader1_Display
+        sys.exit("No such file at file location specified: " + xdmf_file_path)
+    xdmf_reader = GetActiveSource()
+    render_view = GetActiveViewOrCreate('RenderView')
+    xdmf_reader_display = GetDisplayProperties(xdmf_reader, view=render_view)
+    return render_view, xdmf_reader, xdmf_reader_display
 
-def set_Representation(representation, renderView1, xDMFReader1_Display):
+def set_representation(representation, render_view, xdmf_reader_display):
     '''
-    Set representation and update view 
+    Set representation, for example, 'Surface' or 'Wireframe', 
+    and update view 
     '''
-    xDMFReader1_Display.Representation = representation
-    renderView1.Update()
-    return renderView1, xDMFReader1_Display
+    print("update display in representation function")
+    xdmf_reader_display.Representation = representation
+    render_view.Update()
+    return render_view, xdmf_reader_display
 
-def set_colorMap(var, renderView1, xDMFReader1_Display, color_map):
+
+def set_color_map(var, render_view, xdmf_reader_display, color_map):
     '''
-    Set color map to one of preset ParaView color maps.
+    Set the color map to one of preset ParaView color maps.
     If color map entered is invalid, color map is set to 
     default.
     '''
-    ColorBy(xDMFReader1_Display, ('POINTS', var))
-    Var_LUT = GetColorTransferFunction(var)
-    try:
-        Var_LUT.ApplyPreset(color_map, True)
-    except:
-        print('Using default color map')
-        Var_LUT.ApplyPreset('Viridis (matplotlib)', True)
-    xDMFReader1_Display.SetScalarBarVisibility(renderView1, True)
-    xDMFReader1_Display.SetScaleArray = ['POINTS', var]
-    xDMFReader1_Display.ScaleTransferFunction = 'PiecewiseFunction'
-    return xDMFReader1_Display, renderView1, Var_LUT 
+    print("update display in color map function")
+    ColorBy(xdmf_reader_display, ('POINTS', var))
+    # ParaView returns a lookup table (LUT):
+    variable_lookup_table = GetColorTransferFunction(var)
+    variable_lookup_table.ApplyPreset(color_map, True)
+    # Show the color bar for the variable being visualized:
+    xdmf_reader_display.SetScalarBarVisibility(render_view, True)
+    xdmf_reader_display.SetScaleArray = ['POINTS', var]
+    xdmf_reader_display.ScaleTransferFunction = 'PiecewiseFunction'
+    return xdmf_reader_display, render_view, variable_lookup_table 
 
-def tetrahedralize(xDMFReader1, renderView1):
+
+def tetrahedralize(xdmf_reader, render_view):
     '''
     Apply tetrahedralize filter and update view
     '''
-    tetrahedralize1 = Tetrahedralize(Input=xDMFReader1)
-    Hide(xDMFReader1, renderView1)
-    xDMFReader1_Display = Show(tetrahedralize1, renderView1)
-    renderView1.Update()
-    return renderView1, xDMFReader1_Display
+    tetrahedralize1 = Tetrahedralize(Input=xdmf_reader)
+    Hide(xdmf_reader, render_view)
+    xdmf_reader_display = Show(tetrahedralize1, render_view)
+    render_view.Update()
+    return render_view, xdmf_reader_display
 
-def set_Opacity(var, fn_type, opacity_val, renderView1, xDMFReader1, Var_LUT):
+
+def set_opacity(var, function_type, opacity_val, render_view, xdmf_reader, var_lut):#change this function
     '''
     Set opacity based on option chosen in yaml input file:
-    1 : Set to constant opacity specified by user
-    2 : vary opacity as a function of variable (the variable 
-        specified in yaml input file as Variable_name
+    'Constant': some value between 0 and 1
+    'Proportional': opacity set proportional to the variable being visualized,
+    (Under 'Variable_name' in 'Variable_properties')
     '''
-    if fn_type!=1 and fn_type!=2:
-        sys.exit("The Opacity  option specified in the input file is invalid. Enter 1 or 2 for type of function")
-    #Get range of var array
-    var_range = xDMFReader1.PointData.GetArray(var).GetRange()
-    max = var_range[0]
-    min = var_range[1]
-    N_points = 10
+    print("update display in opacity function")
+    if function_type!='Constant' and function_type!='Proportional':
+        sys.exit("The Opacity option specified in the input file is invalid. Enter either 'Constant' or 'Proportional' for the function type")
+    # Get range of var array
+    var_range = xdmf_reader.PointData.GetArray(var).GetRange()
+    # Set variables to construct gaussians
+    var_max = var_range[1]
+    var_min = var_range[0]
 
-    if fn_type == 1: #Constant Opacity
-        Var_LUT.EnableOpacityMapping = 1
+    if function_type == 'Constant': #Constant Opacity
+        var_lut.EnableOpacityMapping = 1
         Var_PWF = GetOpacityTransferFunction(var)
-        Var_PWF.Points = [var_range[0], opacity_val, 0.5, 0, var_range[1] , opacity_val, 0.5, 0]
+        Var_PWF.Points = [var_min, opacity_val, 0.5, 0.0, var_max , opacity_val, 0.5, 0.0]
 
-    elif fn_type == 2: #Varying opacity
-        Var_LUT.EnableOpacityMapping = 1
+    elif function_type == 'Proportional': #Varying opacity
+        var_lut.EnableOpacityMapping = 1
         Var_PWF = GetOpacityTransferFunction(var)
-    
-        x_range = np.linspace(min, max, N_points*10)
-        x_0_list = x_range[min:max:10]
+        num_points = 200 #Number of points to evaluate opacity function
+        num_gauss = 5 #Number of points to evaluate gaussians
+        var_values = np.asarray(np.linspace(var_min, var_max, num_points)) #Array of var values
+        center_values = np.asarray(np.linspace(var_min, var_max, num_gauss)) #centersof gaussian
+        amplitude_values = abs(center_values)/max(abs(var_max), abs(var_min)) #amplitudes of gaussians
+        sigma = (var_values[1] - var_values[0])*2 
 
-        sigma = x_range[1] - x_range[0] #width  
+        gaussians = []
+        gaussians = [np.asarray([center_values[i], amplitude_values[i]]) for i in range(num_gauss)]
+        opacity_function = np.zeros(len(var_values))
+        for gaussian in gaussians:
+            opacity_function += gaussian[1] * np.exp(-1 * np.square(var_values - gaussian[0])/(2*math.pow(sigma,2)))
+        #Create opacity list with var_values, opacity function and 0.0, 0.5
         opacity_list = []
-        opacity = []
-        for i in range(len(x_range)):
-            if x_range[i] in x_0_list:
-                x_vals = np.linspace(x_range[i]-(2*sigma), x_range[i]+(2*sigma), 5)
-                for x in x_vals:
-                    gauss = math.exp(-1*math.pow(x-x_range[i], 2)/(2*math.pow(sigma,2)))
-                    opacity.append(abs(x_range[i]*gauss / max))
-                    opacity_list.append(x)
-                    opacity_list.append(opacity[-1])
-                    opacity_list.append(0.5)
-                    opacity_list.append(0)
-            elif x_range[i] not in x_0_list and len(opacity)==i-1:
-                opacity_list.append(x_range[i])
-                opacity_list.append(0)
-                opacity_list.append(0.5)
-                opacity_list.append(0)
-        opacity_list.append(x_range[i])
-        opacity_list.append(0)
-        opacity_list.append(0.5)
-        opacity_list.append(0)    
+        for point in range(num_points):
+            opacity_list += [var_values[point],opacity_function[point], 0.5, 0.0]
         Var_PWF.Points = opacity_list
-    renderView1.Update()
-    return renderView1
+    render_view.Update()
+    return render_view
 
-def apply_clip(clip_Properties, var, renderView1, Filter1):
-    clip1 = Clip(Input=Filter1)
-    if clip_Properties['Clip_type'] == 'Plane':
-        clip1.ClipType = 'Plane'
-        clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Origin = clip_Properties['Origin']
-        clip1.ClipType.Normal = clip_Properties['Normal']
-    elif clip_Properties['Clip_type'] == 'Box':
-        clip1.ClipType = 'Box'
-        clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Position = clip_Properties['Position']
-        clip1.ClipType.Rotation = clip_Properties['Rotation']
-        clip1.ClipType.Scale = clip_Properties['Scale']
-    elif clip_Properties['Clip_type'] == 'Sphere':
-        clip1.ClipType = 'Sphere'
-        clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Center = clip_Properties['Center_s']
-        clip1.ClipType.Radius = clip_Properties['Radius_s']
-    elif clip_Properties['Clip_type'] == 'Cylinder':
-        clip1.ClipType = 'Cylinder'
-        clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Center = clip_Properties['Center_c']
-        clip1.ClipType.Radius = clip_Properties['Radius_c']
-        clip1.ClipType.Axis = clip_Properties['Axis']
-    #--Hide previous data display before filter--
-    Hide(Filter1, renderView1)
-    xDMFReader1_Display = Show(clip1,renderView1)
-    return renderView1, clip1, xDMFReader1_Display
 
-def apply_slice(slice_Properties, var, renderView1, Filter1):
-    slice1 = Slice(Input=Filter1)
-    if slice_Properties['Slice_type'] == 'Plane':
-        slice1.SliceType = 'Plane'
-        slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Origin= slice_Properties['Origin']
-        slice1.SliceType.Normal= slice_Properties['Normal']
-    elif slice_Properties['Slice_type'] == 'Box':
-        slice1.SliceType = 'Box'
-        slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Position= slice_Properties['Position']
-        slice1.SliceType.Rotation= slice_Properties['Rotation']
-        slice1.SliceType.Scale= slice_Properties['Scale']
-    elif slice_Properties['Slice_type'] == 'Sphere':
-        slice1.SliceType = 'Sphere'
-        slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Center = slice_Properties['Center_s']
-        slice1.SliceType.Radius = slice_Properties['Radius_s']
-    elif slice_Properties['Slice_type'] == 'Cylinder':
-        slice1.SliceType = 'Cylinder'
-        slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Center = slice_Properties['Center_c']
-        slice1.SliceType.Radius = slice_Properties['Radius_c']
-        slice1.SliceType.Axis = slice_Properties['Axis']
-    #--Hide previous data display before filter--
-    Hide(Filter1, renderView1)
-    xDMFReader1_Display = Show(slice1,renderView1)
-    return renderView1, slice1, xDMFReader1_Display
-
-def apply_warp(var, xDMFReader1, renderView1):
+def apply_clip(clip_properties, var, render_view, filter1):
     '''
     Add
     '''
-    slice1 = Slice(Input=xDMFReader1)
+    clip1 = Clip(Input=filter1)
+    if clip_properties['Clip_type'] == 'Plane':
+        clip1.ClipType = 'Plane'
+        clip1.Scalars = ['POINTS', var]
+        clip1.ClipType.Origin = clip_properties['Origin']
+        clip1.ClipType.Normal = clip_properties['Normal']
+    elif clip_properties['Clip_type'] == 'Box':
+        clip1.ClipType = 'Box'
+        clip1.Scalars = ['POINTS', var]
+        clip1.ClipType.Position = clip_properties['Position']
+        clip1.ClipType.Rotation = clip_properties['Rotation']
+        clip1.ClipType.Scale = clip_properties['Scale']
+    elif clip_properties['Clip_type'] == 'Sphere':
+        clip1.ClipType = 'Sphere'
+        clip1.Scalars = ['POINTS', var]
+        clip1.ClipType.Center = clip_properties['Center_s']
+        clip1.ClipType.Radius = clip_properties['Radius_s']
+    elif clip_properties['Clip_type'] == 'Cylinder':
+        clip1.ClipType = 'Cylinder'
+        clip1.Scalars = ['POINTS', var]
+        clip1.ClipType.Center = clip_properties['Center_c']
+        clip1.ClipType.Radius = clip_properties['Radius_c']
+        clip1.ClipType.Axis = clip_properties['Axis']
+    #Hide previous data display before filter
+    Hide(filter1, render_view)
+    xdmf_reader_display = Show(clip1,render_view)
+    return render_view, clip1, xdmf_reader_display
+
+
+def apply_slice(slice_properties, var, render_view, filter1):
+    '''
+    Add
+    '''
+    slice1 = Slice(Input=filter1)
+    if slice_properties['Slice_type'] == 'Plane':
+        slice1.SliceType = 'Plane'
+        slice1.SliceOffsetValues = [0.0]
+        slice1.SliceType.Origin= slice_properties['Origin']
+        slice1.SliceType.Normal= slice_properties['Normal']
+    elif slice_properties['Slice_type'] == 'Box':
+        slice1.SliceType = 'Box'
+        slice1.SliceOffsetValues = [0.0]
+        slice1.SliceType.Position= slice_properties['Position']
+        slice1.SliceType.Rotation= slice_properties['Rotation']
+        slice1.SliceType.Scale= slice_properties['Scale']
+    elif slice_properties['Slice_type'] == 'Sphere':
+        slice1.SliceType = 'Sphere'
+        slice1.SliceOffsetValues = [0.0]
+        slice1.SliceType.Center = slice_properties['Center_s']
+        slice1.SliceType.Radius = slice_properties['Radius_s']
+    elif slice_properties['Slice_type'] == 'Cylinder':
+        slice1.SliceType = 'Cylinder'
+        slice1.SliceOffsetValues = [0.0]
+        slice1.SliceType.Center = slice_properties['Center_c']
+        slice1.SliceType.Radius = slice_properties['Radius_c']
+        slice1.SliceType.Axis = slice_properties['Axis']
+    #Hide previous data display before filter
+    Hide(filter1, render_view)
+    xdmf_reader_display = Show(slice1,render_view)
+    return render_view, slice1, xdmf_reader_display
+
+
+def apply_warp(var, xdmf_reader, render_view):
+    '''
+    Add
+    '''
+    slice1 = Slice(Input=xdmf_reader)
     slice1.SliceType = 'Plane'
     slice1.SliceOffsetValues = [0.0]
-    slice1.SliceType.Origin = [3.141592653589793, 3.141592653589793, 3.141592653589793]
+    slice1.SliceType.Origin = [np.pi, np.pi, np.pi]
     slice1.SliceType.Normal = [0.0, 0.0, 1.0]
-    #xDMFReader1_Display.ColorArrayName = ['POINTS', var]
-    warpByScalar1 = WarpByScalar(Input=slice1)
-    warpByScalar1.Scalars = ['POINTS', var]
-    Hide(xDMFReader1, renderView1)
-    xDMFReader1_Display = Show(warpByScalar1, renderView1)
-    return renderView1
+    warp_by_scalar = WarpByScalar(Input=slice1)
+    warp_by_scalar.Scalars = ['POINTS', var]
+    Hide(xdmf_reader, render_view)
+    xdmf_reader_display = Show(warp_by_scalar, render_view)
+    return render_view
 
-def save_images(renderView1, xDMFReader1):
+
+def save_images(render_view, xdmf_reader, save):
     '''
     Saves single image or multiple images based on number of 
     time steps in data. One image per time step saved
     '''
-    time_steps = xDMFReader1.TimestepValues
-    renderView1.ViewSize = [1330, 670]
-    try:
-        n_steps = len(time_steps)
-    except:
-        n_steps = 1
+    print("save ims in function")
+    time_steps = xdmf_reader.TimestepValues #list of timesteps
+    print(time_steps)
+    print(type(time_steps))
+    render_view.ViewSize = [1920, 1080]
+    if type(time_steps) is paraview.servermanager.VectorProperty:
+        number_of_time_steps = len(time_steps)
+    else:
+        number_of_time_steps = 1
         time_steps = [time_steps]
-    if n_steps ==1:
-        SaveScreenshot('image.png', renderView1)
-    elif n_steps > 1:
+
+    if number_of_time_steps == 1:
+        SaveScreenshot(save +'.png', render_view)
+    elif number_of_time_steps > 1:
         anim = GetAnimationScene()
         anim.PlayMode = 'Snap To TimeSteps'
-        for n in range(n_steps):
-            print('loop',n)
-            anim.AnimationTime = time_steps[n]
-            view = GetRenderView()
-            SaveScreenshot('image_%s.png' %n, view)
+        for time_step_index in range(number_of_time_steps):
+            print('Rendering time step',time_step_index)
+            anim.AnimationTime = time_steps[time_step_index]
+            current_view = GetRenderView()
+            SaveScreenshot(save +'_'+ str(time_step_index) +'.png', current_view)
     return None
 
-def main():
+
+def main(args):
     '''
+    :param args: command line arguments
     Render image(s) based on parameters specified 
     '''
+
+    # Disable automatic camera reset on 'Show'
+    paraview.simple._DisableFirstRenderCameraReset()
+    print("get data set camera defaults")
     # Get data from file, set default camera properties
-    Input_data = load_InputData()
-    renderView1, xDMFReader1, xDMFReader1_Display = readData_Xdmf(Input_data['file_path'])
-    set_defaultCamera(renderView1)
-    # variable name to 'var'
-    var = Input_data['Variable_properties']['Variable_name']
-
-    #renderView1 = tetrahedralize(xDMFReader1, renderView1)
+    input_file = load_input_file(args["input_file"])
+    render_view, xdmf_reader, xdmf_reader_display = read_xdmf(input_file['file_path'])
+    set_default_camera(render_view)
+    # variable name to 'variable_to_render'
+    variable_to_render = input_file['Variable_properties']['Variable_name']
+    print("apply filters")
     # Apply filters
-    Filter1 = GetActiveSource()
+    filter1 = GetActiveSource()
 
-    if Input_data['Filter']['Clip']['Clip_type'] == Input_data['Filter']['Slice']['Slice_type']:
+    if input_file['Filter']['Clip']['Clip_type'] == input_file['Filter']['Slice']['Slice_type']:
         sys.exit('Clip type and Slice type chosen cannot be applied simulatneously')
     else:
-        if Input_data['Filter']['Clip']['Apply'] == True:
-            renderView1, Filter1, xDMFReader1_Display = apply_clip(Input_data['Filter']['Clip'],
-                                                                   var, renderView1, Filter1)
-        elif Input_data['Filter']['Slice']['Apply'] == True:
-            renderView1, Filter1, xDMFReader1_Display = apply_slice(Input_data['Filter']['Slice'],
-                                                                    var, renderView1, Filter1)
-    renderView1.Update()
-
+        if input_file['Filter']['Clip']['Apply']:
+            render_view, filter1, xdmf_reader_display = apply_clip(input_file['Filter']['Clip'],
+                                                                   variable_to_render, render_view, filter1)
+        elif input_file['Filter']['Slice']['Apply']:
+            render_view, filter1, xdmf_reader_display = apply_slice(input_file['Filter']['Slice'],
+                                                                    variable_to_render, render_view, filter1)
+    # Update outside of apply_clip and apply_slice so that both a clip and a slice could be done simultaneously in the future
+    render_view.Update()
+    print("update display")
     # Update Display
-    #renderView1, xDMFReader1_Display = tetrahedralize(xDMFReader1, renderView1)
-    renderView1, xDMFReader1_Display = set_Representation(Input_data['Variable_properties']['Representation'], renderView1, 
-                                                          xDMFReader1_Display)
-    xDMFReader1_Display, renderView1, Var_LUT = set_colorMap(var, renderView1, xDMFReader1_Display, 
-                                                             Input_data['Variable_properties']['Color_map'])
-    renderView1 = set_Opacity(var, Input_data['Variable_properties']['Opacity']['Function_type'], 
-                              Input_data['Variable_properties']['Opacity']['Value'], renderView1, xDMFReader1, Var_LUT)
+    #render_view, xdmf_reader_display = tetrahedralize(xdmf_reader, render_view)
+    render_view, xdmf_reader_display = set_representation(input_file['Variable_properties']['Representation'], render_view,
+                                                          xdmf_reader_display)
+    xdmf_reader_display, render_view, variable_lookup_table = set_color_map(variable_to_render, render_view, xdmf_reader_display, 
+                                                             input_file['Variable_properties']['Color_map'])
+    render_view = set_opacity(variable_to_render, input_file['Variable_properties']['Opacity']['Function_type'], 
+                              input_file['Variable_properties']['Opacity']['Value'], render_view, xdmf_reader, variable_lookup_table)
 
-    if Input_data['Warp']['Add_warp'] == True:
-        renderView1 = apply_warp(var, xDMFReader1, renderView1)
-    renderView1.Update()
-    renderView1.ResetCamera()
-    
+    if input_file['Warp']['Add_warp']:
+        renderView1 = apply_warp(variable_lookup_table, xdmf_reader, render_view)
+    render_view.Update()
+    render_view.ResetCamera()
+    print("save ims")
     # Save images
-    save_images(renderView1, xDMFReader1)
+    save_images(render_view, xdmf_reader, args["save"])
 
     return None
 
 
 if __name__ == "__main__":
     try:
-        main()
+        main(parse_cmd_line())
     except KeyboardInterrupt:
         pass
