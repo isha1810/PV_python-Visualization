@@ -9,7 +9,8 @@ import yaml
 import numpy as np
 import math
 import argparse
-        
+# input file class
+from Input_file import InputFile
 
 def parse_cmd_line():
     '''
@@ -47,9 +48,23 @@ def load_input_file(input_file_name):
     Read data from yaml input file 
     Name/path of yaml file is specified in command line arguments
     '''
-    Input_stream = open(input_file_name, 'r')
-    Input_file = yaml.load(Input_stream)
-    return Input_file
+    # Check yaml file existence:
+    try:
+        input_stream = open(input_file_name, 'r')
+    except FileNotFoundError:
+        sys.exit("Input file was not found at location: " + input_file_name)
+    # Try for error in Yaml formatting
+    # If an error is found, the mark is returned and printed
+    try:
+        input_dictionary = yaml.load(input_stream)
+    except yaml.YAMLError, exc:
+        if hasattr(exc, 'problem_mark'):
+            mark = exc.problem_mark
+            sys.exit("Error position: (%s:%s)" % (mark.line+1, mark.column+1))
+    # Create instance of InputFile class and load data
+    input_file = InputFile(input_dictionary)
+
+    return input_file
 
 
 def read_xdmf(xdmf_file_path): 
@@ -65,12 +80,12 @@ def read_xdmf(xdmf_file_path):
     xdmf_reader_display = GetDisplayProperties(xdmf_reader, view=render_view)
     return render_view, xdmf_reader, xdmf_reader_display
 
+
 def set_representation(representation, render_view, xdmf_reader_display):
     '''
     Set representation, for example, 'Surface' or 'Wireframe', 
     and update view 
     '''
-    print("update display in representation function")
     xdmf_reader_display.Representation = representation
     render_view.Update()
     return render_view, xdmf_reader_display
@@ -82,7 +97,6 @@ def set_color_map(var, render_view, xdmf_reader_display, color_map):
     If color map entered is invalid, color map is set to 
     default.
     '''
-    print("update display in color map function")
     ColorBy(xdmf_reader_display, ('POINTS', var))
     # ParaView returns a lookup table (LUT):
     variable_lookup_table = GetColorTransferFunction(var)
@@ -112,7 +126,6 @@ def set_opacity(var, function_type, opacity_val, render_view, xdmf_reader, var_l
     'Proportional': opacity set proportional to the variable being visualized,
     (Under 'Variable_name' in 'Variable_properties')
     '''
-    print("update display in opacity function")
     if function_type!='Constant' and function_type!='Proportional':
         sys.exit("The Opacity option specified in the input file is invalid. Enter either 'Constant' or 'Proportional' for the function type")
     # Get range of var array
@@ -134,13 +147,13 @@ def set_opacity(var, function_type, opacity_val, render_view, xdmf_reader, var_l
         var_values = np.asarray(np.linspace(var_min, var_max, num_points)) #Array of var values
         center_values = np.asarray(np.linspace(var_min, var_max, num_gauss)) #centersof gaussian
         amplitude_values = abs(center_values)/max(abs(var_max), abs(var_min)) #amplitudes of gaussians
-        sigma = (var_values[1] - var_values[0])*2 
+        sigma = (var_values[1] - var_values[0]) * 2.0 
 
         gaussians = []
         gaussians = [np.asarray([center_values[i], amplitude_values[i]]) for i in range(num_gauss)]
         opacity_function = np.zeros(len(var_values))
         for gaussian in gaussians:
-            opacity_function += gaussian[1] * np.exp(-1 * np.square(var_values - gaussian[0])/(2*math.pow(sigma,2)))
+            opacity_function += gaussian[1] * np.exp(-1.0 * np.square(var_values - gaussian[0])/(2.0 * math.pow(sigma,2)))
         #Create opacity list with var_values, opacity function and 0.0, 0.5
         opacity_list = []
         for point in range(num_points):
@@ -152,31 +165,31 @@ def set_opacity(var, function_type, opacity_val, render_view, xdmf_reader, var_l
 
 def apply_clip(clip_properties, var, render_view, filter1):
     '''
-    Add
+    Apply the clip filter based on clip type chosen in Input file
     '''
     clip1 = Clip(Input=filter1)
-    if clip_properties['Clip_type'] == 'Plane':
+    if clip_properties.pv_type == 'Plane':
         clip1.ClipType = 'Plane'
         clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Origin = clip_properties['Origin']
-        clip1.ClipType.Normal = clip_properties['Normal']
-    elif clip_properties['Clip_type'] == 'Box':
+        clip1.ClipType.Origin = clip_properties.pv_origin
+        clip1.ClipType.Normal = clip_properties.pv_normal
+    elif clip_properties.pv_type == 'Box':
         clip1.ClipType = 'Box'
         clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Position = clip_properties['Position']
-        clip1.ClipType.Rotation = clip_properties['Rotation']
-        clip1.ClipType.Scale = clip_properties['Scale']
-    elif clip_properties['Clip_type'] == 'Sphere':
+        clip1.ClipType.Position = clip_properties.pv_position
+        clip1.ClipType.Rotation = clip_properties.pv_rotation
+        clip1.ClipType.Scale = clip_properties.pv_scale
+    elif clip_properties.pv_type == 'Sphere':
         clip1.ClipType = 'Sphere'
         clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Center = clip_properties['Center_s']
-        clip1.ClipType.Radius = clip_properties['Radius_s']
-    elif clip_properties['Clip_type'] == 'Cylinder':
+        clip1.ClipType.Center = clip_properties.pv_sphere_center
+        clip1.ClipType.Radius = clip_properties.pv_sphere_radius
+    elif clip_properties.pv_type == 'Cylinder':
         clip1.ClipType = 'Cylinder'
         clip1.Scalars = ['POINTS', var]
-        clip1.ClipType.Center = clip_properties['Center_c']
-        clip1.ClipType.Radius = clip_properties['Radius_c']
-        clip1.ClipType.Axis = clip_properties['Axis']
+        clip1.ClipType.Center = clip_properties.pv_cylinder_center
+        clip1.ClipType.Radius = clip_properties.pv_cylinder_radius
+        clip1.ClipType.Axis = clip_properties.pv_axis
     #Hide previous data display before filter
     Hide(filter1, render_view)
     xdmf_reader_display = Show(clip1,render_view)
@@ -185,31 +198,31 @@ def apply_clip(clip_properties, var, render_view, filter1):
 
 def apply_slice(slice_properties, var, render_view, filter1):
     '''
-    Add
+    Apply slice filter based on slice type chosen in Input file
     '''
     slice1 = Slice(Input=filter1)
-    if slice_properties['Slice_type'] == 'Plane':
+    if slice_properties.pv_type == 'Plane':
         slice1.SliceType = 'Plane'
         slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Origin= slice_properties['Origin']
-        slice1.SliceType.Normal= slice_properties['Normal']
-    elif slice_properties['Slice_type'] == 'Box':
+        slice1.SliceType.Origin= slice_properties.pv_origin
+        slice1.SliceType.Normal= slice_properties.pv_normal
+    elif slice_properties.pv_type == 'Box':
         slice1.SliceType = 'Box'
         slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Position= slice_properties['Position']
-        slice1.SliceType.Rotation= slice_properties['Rotation']
-        slice1.SliceType.Scale= slice_properties['Scale']
-    elif slice_properties['Slice_type'] == 'Sphere':
+        slice1.SliceType.Position= slice_properties.pv_position
+        slice1.SliceType.Rotation= slice_properties.pv_rotation
+        slice1.SliceType.Scale= slice_properties.pv_scale
+    elif slice_properties.pv_type == 'Sphere':
         slice1.SliceType = 'Sphere'
         slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Center = slice_properties['Center_s']
-        slice1.SliceType.Radius = slice_properties['Radius_s']
-    elif slice_properties['Slice_type'] == 'Cylinder':
+        slice1.SliceType.Center = slice_properties.pv_sphere_center
+        slice1.SliceType.Radius = slice_properties.pv_sphere_radius
+    elif slice_properties.pv_type == 'Cylinder':
         slice1.SliceType = 'Cylinder'
         slice1.SliceOffsetValues = [0.0]
-        slice1.SliceType.Center = slice_properties['Center_c']
-        slice1.SliceType.Radius = slice_properties['Radius_c']
-        slice1.SliceType.Axis = slice_properties['Axis']
+        slice1.SliceType.Center = slice_properties.pv_cylinder_center
+        slice1.SliceType.Radius = slice_properties.pv_cylinder_radius
+        slice1.SliceType.Axis = slice_properties.pv_axis
     #Hide previous data display before filter
     Hide(filter1, render_view)
     xdmf_reader_display = Show(slice1,render_view)
@@ -218,7 +231,8 @@ def apply_slice(slice_properties, var, render_view, filter1):
 
 def apply_warp(var, xdmf_reader, render_view):
     '''
-    Add
+    Create a surface warp.
+    Warps by variable being visualized
     '''
     slice1 = Slice(Input=xdmf_reader)
     slice1.SliceType = 'Plane'
@@ -237,17 +251,15 @@ def save_images(render_view, xdmf_reader, save):
     Saves single image or multiple images based on number of 
     time steps in data. One image per time step saved
     '''
-    print("save ims in function")
     time_steps = xdmf_reader.TimestepValues #list of timesteps
-    print(time_steps)
-    print(type(time_steps))
     render_view.ViewSize = [1920, 1080]
+
     if type(time_steps) is paraview.servermanager.VectorProperty:
         number_of_time_steps = len(time_steps)
     else:
         number_of_time_steps = 1
         time_steps = [time_steps]
-
+        
     if number_of_time_steps == 1:
         SaveScreenshot(save +'.png', render_view)
     elif number_of_time_steps > 1:
@@ -269,43 +281,39 @@ def main(args):
 
     # Disable automatic camera reset on 'Show'
     paraview.simple._DisableFirstRenderCameraReset()
-    print("get data set camera defaults")
     # Get data from file, set default camera properties
     input_file = load_input_file(args["input_file"])
-    render_view, xdmf_reader, xdmf_reader_display = read_xdmf(input_file['file_path'])
+    render_view, xdmf_reader, xdmf_reader_display = read_xdmf(input_file.pv_file_path)
     set_default_camera(render_view)
     # variable name to 'variable_to_render'
-    variable_to_render = input_file['Variable_properties']['Variable_name']
-    print("apply filters")
+    variable_to_render = input_file.pv_variable_properties.pv_variable_name
     # Apply filters
     filter1 = GetActiveSource()
 
-    if input_file['Filter']['Clip']['Clip_type'] == input_file['Filter']['Slice']['Slice_type']:
+    if input_file.pv_filters.pv_clip.pv_type == input_file.pv_filters.pv_slice.pv_type:
         sys.exit('Clip type and Slice type chosen cannot be applied simulatneously')
     else:
-        if input_file['Filter']['Clip']['Apply']:
-            render_view, filter1, xdmf_reader_display = apply_clip(input_file['Filter']['Clip'],
+        if input_file.pv_filters.pv_clip.pv_apply:
+            render_view, filter1, xdmf_reader_display = apply_clip(input_file.pv_filters.pv_clip,
                                                                    variable_to_render, render_view, filter1)
-        elif input_file['Filter']['Slice']['Apply']:
-            render_view, filter1, xdmf_reader_display = apply_slice(input_file['Filter']['Slice'],
+        elif input_file.pv_filters.pv_slice.pv_apply:
+            render_view, filter1, xdmf_reader_display = apply_slice(input_file.pv_filters.pv_slice,
                                                                     variable_to_render, render_view, filter1)
     # Update outside of apply_clip and apply_slice so that both a clip and a slice could be done simultaneously in the future
     render_view.Update()
-    print("update display")
     # Update Display
-    #render_view, xdmf_reader_display = tetrahedralize(xdmf_reader, render_view)
-    render_view, xdmf_reader_display = set_representation(input_file['Variable_properties']['Representation'], render_view,
+    render_view, xdmf_reader_display = tetrahedralize(xdmf_reader, render_view)
+    render_view, xdmf_reader_display = set_representation(input_file.pv_variable_properties.pv_representation, render_view,
                                                           xdmf_reader_display)
     xdmf_reader_display, render_view, variable_lookup_table = set_color_map(variable_to_render, render_view, xdmf_reader_display, 
-                                                             input_file['Variable_properties']['Color_map'])
-    render_view = set_opacity(variable_to_render, input_file['Variable_properties']['Opacity']['Function_type'], 
-                              input_file['Variable_properties']['Opacity']['Value'], render_view, xdmf_reader, variable_lookup_table)
+                                                                            input_file.pv_variable_properties.pv_color_map)
+    render_view = set_opacity(variable_to_render, input_file.pv_variable_properties.pv_opacity.pv_function_type, 
+                              input_file.pv_variable_properties.pv_opacity.pv_value, render_view, xdmf_reader, variable_lookup_table)
 
-    if input_file['Warp']['Add_warp']:
+    if input_file.pv_warp.pv_add_warp:
         renderView1 = apply_warp(variable_lookup_table, xdmf_reader, render_view)
     render_view.Update()
     render_view.ResetCamera()
-    print("save ims")
     # Save images
     save_images(render_view, xdmf_reader, args["save"])
 
