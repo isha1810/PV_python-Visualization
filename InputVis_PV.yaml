@@ -1,10 +1,13 @@
+# Distributed under he MIT License.
+# See LICENSE.txt for details.
+
 #Path to XDMF file
-file_path: ScalarWave3DPeriodicVol_data.xmf  
-#insert path here
+file_path: GrMhdVol_30.xmf
+#          insert path here
 
 #Set Variable display
 Variable_properties:
-  Variable_name: Psi
+  Variable_name: RestMassDensity
 #          insert name of variable here
 #          Choose one representation from: Surface, Points, Wireframe, Outline, Feature Edges, Surface With Edges, Point Gaussian, 3D Glyphs
   Representation: Surface
@@ -12,21 +15,22 @@ Variable_properties:
   Color_map: Viridis (matplotlib)
 #          Viridis (matplotlib), Inferno (matplotlib) or Cool to Warm
   Opacity: 
-#          Choose Opacity function: 'Constant' or 'Proportional' 
+#          Choose Opacity function: 'Constant' or 'Proportional'
     Function_type: Proportional
     Value: 1
 #          insert value between 0 and 1 if Function_type chosen is 'Constant'
 
 #Choose Filter
 Filter:
-  Clip: 
+
+  Clip:
     Apply: False
 #          enter True/False
-    Clip_type: Sphere 
+    Clip_type: Plane
 #          Choose Clip type from: Plane, Box, Sphere, Cylinder
 #   -- For Plane --
-    Origin: [3.14, 3.14, 3.14]
-    Normal: [1, 0, 0]
+    Origin: [0, 0, 0]
+    Normal: [0, 1, 0]
 #   -- For Box --
     Position: [0,0,0]
     Rotation: [0,0,0]
@@ -65,7 +69,7 @@ Filter:
 #    Contour_variable: Error(Psi)
 #          contour by this variable
 
-#Warping 
+#Warping
 Warp:
   Add_warp: False
 
