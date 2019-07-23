@@ -10,34 +10,46 @@ class InputFile():
         '''
         Add
         '''
-        self.pv_file_path = input_dict["file_path"]
-        self.pv_variable_properties = VariableProperties(
-            input_dict["Variable_properties"])
-        self.pv_filters = Filters(input_dict["Filter"])
+        self.pv_file_path = input_dict["File_path"]
+        self.pv_scalar_variable_properties = ScalarVariableProperties(
+            input_dict["Scalar_variable_properties"])
+        self.pv_vector_variable_properties = VectorVariableProperties(
+            input_dict["Vector_variable_properties"])
+        self.pv_filters = Filters(input_dict["Filters"])
         self.pv_warp = Warp(input_dict["Warp"])
         self.pv_save_properties = SaveProperties(
             input_dict["Save_properties"])
         return None
 
 
-class VariableProperties(InputFile):
-    def __init__(self, pv_variable_properties):
+class ScalarVariableProperties(InputFile):
+    def __init__(self, pv_scalar_variable_properties):
         '''
         Add
         '''
-        self.pv_variable_name = pv_variable_properties["Variable_name"]
-        self.pv_representation = pv_variable_properties["Representation"]
-        self.pv_color_map = pv_variable_properties["Color_map"]
-        self.pv_opacity = Opacity(pv_variable_properties["Opacity"])
+        self.pv_variable_name = pv_scalar_variable_properties["Variable_name"]
+        self.pv_representation = pv_scalar_variable_properties["Representation"]
+        self.pv_color_map = pv_scalar_variable_properties["Color_map"]
+        self.pv_opacity = Opacity(pv_scalar_variable_properties["Opacity"])
 
 
-class Opacity(VariableProperties):
+class Opacity(ScalarVariableProperties):
     def __init__(self, pv_opacity):
         '''
         Add
         '''
         self.pv_function_type = pv_opacity["Function_type"]
         self.pv_value = pv_opacity["Value"]
+
+
+class VectorVariableProperties(InputFile):
+    def __init__(self,pv_vector_variable_properties):
+        '''
+        Add
+        '''
+        self.pv_add_vector_field = pv_vector_variable_properties["Add_vector_field"]
+        self.pv_variable_name = pv_vector_variable_properties["Variable_name"]
+        self.pv_color_map = pv_vector_variable_properties["Color_map"]
 
 
 class Filters(InputFile):
