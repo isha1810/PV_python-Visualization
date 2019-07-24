@@ -176,7 +176,8 @@ def set_opacity(var, function_type, opacity_val, render_view,\
     return render_view
 
 
-def set_vector_color_map(vector_var_display, vector_variable, color_map, render_view):
+def set_vector_color_map(vector_var_display, vector_variable, color_map,
+                         render_view):
     '''
     Sets color_map for vector field
     '''
@@ -187,6 +188,7 @@ def set_vector_color_map(vector_var_display, vector_variable, color_map, render_
     vector_var_display.RescaleTransferFunctionToDataRange(True, False)
     render_view.Update()
     return render_view
+
 
 def apply_clip(clip_properties, var, render_view, var_source):
     '''
@@ -254,7 +256,6 @@ def apply_slice(slice_properties, var, render_view, var_source):
     return render_view, slice_pv, display
 
 
-# Trying to add new feature, glyph:
 def add_vector_field(vector_variable, vector_var_source, render_view):
     '''
     Adds a vector field (glyph) of variable specified in input file.
@@ -278,7 +279,7 @@ def add_vector_field(vector_variable, vector_var_source, render_view):
     return render_view, vector_var_display, vector_field
 
 
-def apply_warp(var, var_source, render_view):
+def add_warp(var, var_source, render_view):
     '''
     Create a surface warp.
     Warps by variable being visualized
@@ -286,7 +287,7 @@ def apply_warp(var, var_source, render_view):
     # First construct negative var array
     # for downward warp
     calculator = Calculator(Input=var_source)
-    neg_var = 'negative_'+var
+    neg_var = 'negative_'+var #setting name of new variable array
     calculator.ResultArrayName = neg_var
     calculator.Function = '-1*'+ var
     slice_pv = Slice(Input=calculator)
@@ -313,7 +314,7 @@ def apply_warp(var, var_source, render_view):
 def save_images(render_view, xdmf_reader, save):
     '''
     Saves single image or multiple images based on number of
-    time steps in data. One image per time step saved
+    time steps in data. One image is saved per time step.
     '''
     time_steps = xdmf_reader.TimestepValues  # list of timesteps
     render_view.ViewSize = [1920, 1080]
@@ -337,7 +338,8 @@ def save_images(render_view, xdmf_reader, save):
             display_time(xdmf_reader, current_view)
             # Generating 6-digit index for image name for ex 000001 instead of 1
             time_step_index_str = str(time_step_index)
-            time_step_index_str = (6-len(time_step_index_str))*"0" + time_step_index_str
+            time_step_index_str =\
+                (6-len(time_step_index_str))*"0" +\time_step_index_str
             SaveScreenshot(save + '_' + time_step_index_str +
                            '.png', current_view)
     return None
@@ -368,6 +370,8 @@ def main(args):
         input_file.pv_file_path)
     set_default_camera(render_view)
 
+    # Set scalar and vector variables from input files
+    # Create different source objects for scalar and vector rendering
     scalar_variable = input_file.pv_scalar_variable_properties.pv_variable_name
     vector_variable = input_file.pv_vector_variable_properties.pv_variable_name
     scalar_var_source = GetActiveSource()
@@ -410,9 +414,10 @@ def main(args):
                   input_file.pv_scalar_variable_properties.pv_color_map)
     render_view=\
     set_opacity(scalar_variable,
-                input_file.pv_scalar_variable_properties.pv_opacity.pv_function_type,
-                input_file.pv_scalar_variable_properties.pv_opacity.pv_value,
-                render_view, scalar_var_source, variable_lookup_table)
+        input_file.pv_scalar_variable_properties.pv_opacity.pv_function_type,
+        input_file.pv_scalar_variable_properties.pv_opacity.pv_value,
+        render_view, scalar_var_source, variable_lookup_table)
+
     # Update Display for vector var:
     # Set color_map for vector field
     if input_file.pv_vector_variable_properties.pv_add_vector_field:
@@ -422,12 +427,10 @@ def main(args):
 
     # For Warp
     if input_file.pv_warp.pv_add_warp:
-        render_view = apply_warp(
+        render_view = add_warp(
             scalar_variable, xdmf_reader, render_view)
-    #render_view.Update()
-    Hide(xdmf_reader, render_view)
-    render_view.ResetCamera()
 
+    render_view.ResetCamera()
     # Save images
     save_images(render_view, xdmf_reader, args["save"])
 
