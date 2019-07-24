@@ -17,7 +17,7 @@ Scalar_variable_properties:
   Opacity: 
 #          Choose Opacity function: 'Constant' or 'Proportional'
     Function_type: Constant
-    Value: 0.05
+    Value: 0.6
 #          insert value between 0 and 1 if Function_type chosen is 'Constant'
 
 #Add vector variable
@@ -32,7 +32,7 @@ Vector_variable_properties:
 #Choose Filter
 Filters:
   Clip:
-    Apply: False
+    Apply: True
 #        enter True/False
     Clip_type: Plane
 #        Choose Clip type from: Plane, Box, Sphere, Cylinder
@@ -72,7 +72,7 @@ Filters:
 
 #Warping
 Warp:
-  Add_warp: False
+  Add_warp: True
 #             enter True/False
 
 #Image/Animation Save Properties

@@ -275,7 +275,7 @@ def add_vector_field(vector_variable, vector_var_source, render_view):
     # Glyph display
     vector_var_display = Show(vector_field, render_view)
     render_view.Update()
-    return render_view, vector_var_display
+    return render_view, vector_var_display, vector_field
 
 
 def apply_warp(var, var_source, render_view):
@@ -283,18 +283,30 @@ def apply_warp(var, var_source, render_view):
     Create a surface warp.
     Warps by variable being visualized
     '''
-    slice_pv = Slice(Input=var_source)
+    # First construct negative var array
+    # for downward warp
+    calculator = Calculator(Input=var_source)
+    neg_var = 'negative_'+var
+    calculator.ResultArrayName = neg_var
+    calculator.Function = '-1*'+ var
+    slice_pv = Slice(Input=calculator)
     slice_pv.SliceType = 'Plane'
     slice_pv.SliceOffsetValues = [0.0]
-    slice_pv.SliceType.Origin = [np.pi, np.pi, np.pi]
+    slice_pv.SliceType.Origin = [0, 0, 0]
     slice_pv.SliceType.Normal = [0.0, 0.0, 1.0]
+    # Warp slice
     warp_by_scalar = WarpByScalar(Input=slice_pv)
-    warp_by_scalar.Scalars = ['POINTS', var]
+    warp_by_scalar.Scalars = ['POINTS', neg_var]
+    warp_by_scalar.ScaleFactor = 40
+    warp_by_scalar.UseNormal = 1
+    # Translate the warp 
     transform = Transform(Input=warp_by_scalar)
     transform.Transform = 'Transform'
-    transform.Transform.Translate = [0.0, 0.0, 10.0]
+    transform.Transform.Translate = [0.0, 0.0, -15.0]
     Hide(var_source, render_view)
-    display = Show(transform, render_view)
+    transform_display = Show(transform, render_view)
+    ColorBy(transform_display, ('POINTS', var))
+    render_view.Update()
     return render_view
 
 
@@ -357,20 +369,37 @@ def main(args):
     set_default_camera(render_view)
 
     scalar_variable = input_file.pv_scalar_variable_properties.pv_variable_name
-    scalar_var_source = xdmf_reader
-    
+    vector_variable = input_file.pv_vector_variable_properties.pv_variable_name
+    scalar_var_source = GetActiveSource()
+    vector_var_source = GetActiveSource()
+
+    # For vector variable properties:
+    # Add vector field (glyphs on ParaView):
+    if input_file.pv_vector_variable_properties.pv_add_vector_field:
+        render_view, vector_var_display, vector_var_source =\
+        add_vector_field(vector_variable, vector_var_source, render_view)
+
     # Apply filters
     if input_file.pv_filters.pv_clip.pv_apply:
-        render_view, filter1, scalar_var_display=\
+        render_view, scalar_var_source, scalar_var_display=\
         apply_clip(input_file.pv_filters.pv_clip,
                    scalar_variable, render_view, scalar_var_source)
+        if input_file.pv_vector_variable_properties.pv_add_vector_field:
+            render_view, vector_var_source, vector_var_display=\
+            apply_clip(input_file.pv_filters.pv_clip,
+                       vector_variable, render_view, vector_var_source)
     elif input_file.pv_filters.pv_slice.pv_apply:
-        render_view, filter1, scalar_var_display=\
+        render_view, scalar_var_source, scalar_var_display=\
         apply_slice(input_file.pv_filters.pv_slice,
                     scalar_variable, render_view, scalar_var_source)
+        if input_file.pv_vector_variable_properties.pv_add_vector_field:
+            render_view, vector_var_source, vector_var_display=\
+            apply_slice(input_file.pv_filters.pv_slice,
+                        vector_variable, render_view, vector_var_source)
     # Update outside of apply_clip and apply_slice
     # so that both a clip and a slice could be done simultaneously in the future
     render_view.Update()
+
     # Update Display for scalar var
     render_view, scalar_var_display=tetrahedralize(scalar_var_source, render_view)
     render_view,scalar_var_display=\
@@ -383,22 +412,11 @@ def main(args):
     set_opacity(scalar_variable,
                 input_file.pv_scalar_variable_properties.pv_opacity.pv_function_type,
                 input_file.pv_scalar_variable_properties.pv_opacity.pv_value,
-                render_view, xdmf_reader, variable_lookup_table)
-    # Set color_map for vector field:
-#    render_view = set_vector_color_map(vector_var_display,
-#                input_file.pv_vector_variable_properties.pv_variable_name,
-#                input_file.pv_vector_variable_properties.pv_color_map,
-#                render_view)
-
-    # For vector variable properties:
-    vector_var_source = xdmf_reader
-    # Add vector field (glyphs on ParaView):
+                render_view, scalar_var_source, variable_lookup_table)
+    # Update Display for vector var:
+    # Set color_map for vector field
     if input_file.pv_vector_variable_properties.pv_add_vector_field:
-        render_view =\
-        add_vector_field(input_file.pv_vector_variable_properties.pv_variable_name,
-                         vector_var_source, render_view)
-     render_view = set_vector_color_map(vector_var_display,
-                input_file.pv_vector_variable_properties.pv_variable_name,
+        render_view = set_vector_color_map(vector_var_display, vector_variable,
                 input_file.pv_vector_variable_properties.pv_color_map,
                 render_view)
 
@@ -406,7 +424,8 @@ def main(args):
     if input_file.pv_warp.pv_add_warp:
         render_view = apply_warp(
             scalar_variable, xdmf_reader, render_view)
-    render_view.Update()
+    #render_view.Update()
+    Hide(xdmf_reader, render_view)
     render_view.ResetCamera()
 
     # Save images
