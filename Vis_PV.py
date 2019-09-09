@@ -132,7 +132,7 @@ def set_opacity(var, function_type, opacity_val, render_view,\
     Set opacity based on option chosen in yaml input file:
     'Constant': some value between 0 and 1
     'Proportional': opacity set proportional to the variable being visualized,
-    (Under 'Variable_name' in 'Variable_properties')
+    (Under 'Scalar_variable_properties')
     '''
     # Get range of var array
     var_range = scalar_var_source.PointData.GetArray(var).GetRange()
@@ -167,6 +167,8 @@ def set_opacity(var, function_type, opacity_val, render_view,\
             opacity_function += gaussian[1] * np.exp(-1.0 * np.square(
                 var_values - gaussian[0])/(2.0 * sigma**2))
         # Create opacity list with var_values, opacity function and 0.0, 0.5
+        # (the values 0.0 and 0.5 are used in the format used by ParaView
+        #  to set opacities)
         opacity_list = []
         for point in range(num_points):
             opacity_list += [var_values[point],
@@ -266,7 +268,7 @@ def add_vector_field(vector_variable, vector_var_source, render_view):
     # Set basic properties of the glyph object
     vector_field.ScaleFactor = 40
     vector_field.GlyphType.TipResolution = 6
-    vector_field.GlyphType.TipRadius = 0.1
+    vector_field.GlyphType.TipRadius = 0.2
     vector_field.GlyphType.TipLength = 0.5
     vector_field.GlyphType.ShaftResolution = 6
     vector_field.GlyphType.ShaftRadius = 0.08
@@ -279,7 +281,7 @@ def add_vector_field(vector_variable, vector_var_source, render_view):
     return render_view, vector_var_display, vector_field
 
 
-def add_warp(var, var_source, render_view):
+def add_scalar_warp(scalar_var, var_source, render_view):
     '''
     Create a surface warp.
     Warps by variable being visualized
@@ -287,9 +289,9 @@ def add_warp(var, var_source, render_view):
     # First construct negative var array
     # for downward warp
     calculator = Calculator(Input=var_source)
-    neg_var = 'negative_'+var #setting name of new variable array
+    neg_var = 'negative_'+ scalar_var #setting name of new variable array
     calculator.ResultArrayName = neg_var
-    calculator.Function = '-1*'+ var
+    calculator.Function = '-1*'+ scalar_var
     slice_pv = Slice(Input=calculator)
     slice_pv.SliceType = 'Plane'
     slice_pv.SliceOffsetValues = [0.0]
@@ -306,7 +308,48 @@ def add_warp(var, var_source, render_view):
     transform.Transform.Translate = [0.0, 0.0, -15.0]
     Hide(var_source, render_view)
     transform_display = Show(transform, render_view)
-    ColorBy(transform_display, ('POINTS', var))
+    ColorBy(transform_display, ('POINTS', scalar_var))
+    render_view.Update()
+    return render_view
+
+
+def add_vector_warp(vector_var, scalar_var, var_source, render_view):
+    '''
+    Add vector warp to show vector field along with scalar warp
+    '''
+    # First construct negative var array
+    # for downward warp
+    calculator = Calculator(Input=var_source)
+    neg_var = 'negative_'+ scalar_var #setting name of new variable array
+    calculator.ResultArrayName = neg_var
+    calculator.Function = '-1*'+ scalar_var
+    slice_pv = Slice(Input=calculator)
+    slice_pv.SliceType = 'Plane'
+    slice_pv.SliceOffsetValues = [0.0]
+    slice_pv.SliceType.Origin = [0, 0, 0]
+    slice_pv.SliceType.Normal = [0.0, 0.0, 1.0]
+    # Get vector field on slice
+    vectors_slice = Glyph(Input=slice_pv, GlyphType='2D Glyph')
+    vectors_slice.OrientationArray = ['POINTS', vector_var]
+    vectors_slice.ScaleArray = ['POINTS', 'SpatialVelocity']
+    vectors_slice.ScaleFactor = 30
+    vectors_slice.MaximumNumberOfSamplePoints = 100
+    vectors_slice_display = GetDisplayProperties(vectors_slice, view=render_view)
+    vectors_slice_display.LineWidth = 3.0
+    #Hide(vectors_slice, render_view)
+    # Warp slice
+    warp_by_scalar = WarpByScalar(Input=vectors_slice)
+    warp_by_scalar.Scalars = ['POINTS', neg_var]
+    warp_by_scalar.ScaleFactor = 40
+    warp_by_scalar.UseNormal = 1
+    # Translate the warp
+    transform = Transform(Input=warp_by_scalar)
+    transform.Transform = 'Transform'
+    transform.Transform.Translate = [0.0, 0.0, -15.0]
+    Hide(vectors_slice, render_view)
+    #Hide(var_source, render_view)
+    transform_display = Show(transform, render_view)
+    ColorBy(transform_display, ('POINTS', vector_var, 'Magnitude'))
     render_view.Update()
     return render_view
 
@@ -339,7 +382,7 @@ def save_images(render_view, xdmf_reader, save):
             # Generating 6-digit index for image name for ex 000001 instead of 1
             time_step_index_str = str(time_step_index)
             time_step_index_str =\
-                (6-len(time_step_index_str))*"0" +\time_step_index_str
+                (6-len(time_step_index_str))*"0" + time_step_index_str
             SaveScreenshot(save + '_' + time_step_index_str +
                            '.png', current_view)
     return None
@@ -427,8 +470,10 @@ def main(args):
 
     # For Warp
     if input_file.pv_warp.pv_add_warp:
-        render_view = add_warp(
+        render_view = add_scalar_warp(
             scalar_variable, xdmf_reader, render_view)
+        render_view = add_vector_warp(vector_variable, scalar_variable,
+            xdmf_reader, render_view)
 
     render_view.ResetCamera()
     # Save images
