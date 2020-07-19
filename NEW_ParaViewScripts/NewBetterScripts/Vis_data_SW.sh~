@@ -1,0 +1,14 @@
+#!/bin/bash -
+#SBATCH --ntasks-per-node 24
+#SBATCH -A sxs
+#SBATCH --no-requeue
+#SBATCH -J vis_pv
+#SBATCH --nodes 1
+#SBATCH -t 2:30:00
+#SBATCH -p productionQ
+
+cd ~/Vis_PV_myGit/NEW_ParaViewScripts/NewBetterScripts/
+
+pvbatch TryTwoViews.py --input-file InputParaView.yaml --save ScalarWave_try
+
+
