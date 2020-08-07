@@ -17,17 +17,6 @@ from ReadWriteFunctions import *
 from SetDisplayFunctions import *
 
 
-def volume_render(scalar_var_source, render_view):
-    material_library = GetMaterialLibrary()
-    #not sure what this is ^
-    merge_blocks = MergeBlocks(Input=scalar_var_source)
-    #Do not merge points
-    merge_blocks.MergePoints = 0
-    merge_blocks_display = Show(merge_blocks, render_view)
-    merge_blocks_display.SetRepresentationType('Volume')
-    return merge_blocks_display
-
-
 def main(args):
     '''
     :param args: command line arguments
@@ -40,7 +29,7 @@ def main(args):
     input_file = load_input_file(args["input_file"])
     scalar_variable = input_file.pv_scalar_variable_properties.pv_variable_name
     xdmf_reader = get_xdmf_reader(input_file.pv_file_path)
-    render_view = create_render_view()
+    render_view = CreateRenderView()
     set_default_camera(render_view)
 
     # Do volume render

@@ -9,6 +9,6 @@
 
 cd ~/Vis_PV_myGit/NEW_ParaViewScripts/NewBetterScripts/
 
-pvbatch TryThreeViews.py --input-file InputParaView.yaml --save ScalarWave_try
+pvbatch RenderXdmf.py --input-file InputParaView.yaml --save ScalarWave_try
 
 

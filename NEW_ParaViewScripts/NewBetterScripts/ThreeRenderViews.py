@@ -1,0 +1,73 @@
+# !/usr/bin/env python
+
+# Distributed under the MIT License.
+# See LICENSE.txt for details.
+
+from paraview.simple import *
+import sys
+import yaml
+import numpy as np
+import math
+import argparse
+# input file class
+from InputFile import InputFile
+
+#import common functions
+from ReadWriteFunctions import *
+from SetDisplayFunctions import *
+
+
+def main(args):
+    '''
+    :param args: command line arguments
+    Render image(s) based on parameters specified
+    '''
+    paraview.simple._DisableFirstRenderCameraReset()
+    input_file = load_input_file(args["input_file"])
+    scalar_variable = input_file.pv_scalar_variable_properties.pv_variable_name
+    
+    # Create a three view layout
+    render_view1 = CreateRenderView()
+    layout = GetLayout()
+    layout.AssignView(0, render_view1)
+    # split the view into two parts.
+    # the first part, render_view1, is bigger
+    layout.SplitVertical(0, 0.6)
+    # create second view
+    render_view2 = CreateRenderView()
+    layout.AssignView(2, render_view2)
+    # Now split the top view (render_view1) into two equal parts
+    layout.SplitHorizontal(1, 0.5)
+    # create third view
+    render_view3 = CreateRenderView()
+    layout.AssignView(4, render_view3)
+    # Assign views to layout
+    layout.AssignView(3, render_view1)
+    layout.AssignView(2, render_view2)
+    layout.AssignView(4, render_view3)
+
+    xdmf_reader = get_xdmf_reader(input_file.pv_file_path)
+    SetActiveView(render_view1)
+    # Add script to render in first view
+
+    SetActiveView(render_view2)
+    # Add script to render in second view
+
+    SetActiveView(render_view3)
+    # Add script to render in third view
+
+
+    SaveScreenshot("new_image.png", layout, SaveAllViews=1,
+                   ImageResolution=input_file.pv_save_properties.pv_image_resolution)
+
+    # Save images
+    #save_images(render_view, xdmf_reader, args["save"])
+    
+    return None
+
+
+if __name__ == "__main__":
+    try:
+        main(parse_cmd_line())
+    except KeyboardInterrupt:
+        pass

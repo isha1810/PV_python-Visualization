@@ -73,7 +73,6 @@ class Clip():
         Initializes Clip (which is a type of filter) that contains information
         to apply the filter (such as clip type: plane, box and position,...)
         '''
-        self.pv_apply = pv_clip["Apply"]
         self.pv_type = pv_clip["Clip_type"]
         # For plane
         self.pv_origin = pv_clip["Origin"]
@@ -97,7 +96,6 @@ class Slice():
         Initializes Slice (which is a type of filter) that contains information
         to apply the filter (such as slice type: plane, box and position,...)
         '''
-        self.pv_apply = pv_slice["Apply"]
         self.pv_type = pv_slice["Slice_type"]
         # For plane
         self.pv_origin = pv_slice["Origin"]
@@ -120,7 +118,6 @@ class Warp():
         '''
         Initializes the warp information - now only implemented for apply warp
         '''
-        self.pv_add_warp = pv_warp["Add_warp"]
         self.pv_scale_type = pv_warp["Scale_type"]
         self.pv_scale_factor = pv_warp["Scale_factor"]
 

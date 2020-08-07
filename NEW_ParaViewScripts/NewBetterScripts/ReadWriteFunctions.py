@@ -70,37 +70,13 @@ def get_xdmf_reader(xdmf_file_path):
     SetActiveSource(xdmf_reader)
     return xdmf_reader
 
-def create_render_view():
-    '''
-    Creates and returns a new view
-    '''
-    # CreateRenderView()
-    return GetActiveViewOrCreate('RenderView')
 
-
-def get_scalar_var_source(scalar_variable, xdmf_reader):
-    '''
-    
-    '''
-    scalar_var_source = xdmf_reader
-    scalar_var_source.PointArrayStatus = [scalar_variable]
-    return scalar_var_source
-
-def get_vector_var_source(vector_variable, xdmf_reader):
-    '''
-
-    '''
-    vector_var_source = xdmf_reader
-    vector_var_source.PointArrayStatus = [vector_variable]
-    return vector_var_source
-
-def save_images(render_view, xdmf_reader, save):
+def save_images(render_view, xdmf_reader, save, image_resolution):
     '''
     Saves single image or multiple images based on number of
     time steps in data. One image is saved per time step.
     '''
     time_steps = xdmf_reader.TimestepValues  # list of timesteps
-    render_view.ViewSize = [1920, 1080]
     #Check if there a multiple timesteps
     #VectorProperty below is a paraview type vector object 
     if type(time_steps) is paraview.servermanager.VectorProperty:
@@ -125,7 +101,7 @@ def save_images(render_view, xdmf_reader, save):
             time_step_index_str =\
                     (6-len(time_step_index_str))*"0" + time_step_index_str
             SaveScreenshot(save + '_' + time_step_index_str +
-                           '.png', current_view)
+                           '.png', current_view, ImageResolution=image_resolution)
     return None
 
 

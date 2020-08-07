@@ -32,8 +32,6 @@ Vector_variable_properties:
 #Choose Filter
 Filters:
   Clip:
-    Apply: False
-#        enter True/False
     Clip_type: Sphere
 #        Choose Clip type from: Plane, Box, Sphere, Cylinder
 #   -- For Plane --
@@ -51,8 +49,6 @@ Filters:
     Radius_c: 3.14
     Axis: [1,0,0]
   Slice:
-    Apply: True
-#           enter True/False
     Slice_type: Plane
 #          Choose Slice type from: Plane, Box, Sphere, Cylinder
 #   -- For Plane --
@@ -72,13 +68,11 @@ Filters:
 
 #Warping
 Warp:
-  Add_warp: True
-#             enter True/False
   Scale_type: Linear
 #             Choose scale type: 'Log' or 'Linear'
-  Scale_factor: 10
+  Scale_factor: 0.6
 
-#Image/Animation Save Properties
+#Camera and Resolution Properties
 Save_properties:
   Image_resolution: [1920, 1080]
 #          420p: [852, 420], 720p: [1280, 720], 1080p: [1920, 1080]
